@@ -267,6 +267,41 @@ rm -f ${DEST}
 echo "##### Changing ownership of ${DIR} to ${USER} #####"
 chown ${USER}:${USER} ${DIR}
 
+# Install Visual Studio code
+if [ "${OS}" = "ubuntu" ]; then
+    # Download pgp key
+    echo "##### Downloading VS Code pgp key #####"
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | apt-key add -
+
+    # Add VS Code to apt repository
+    echo "##### Updating apt repository for VS Code install #####"
+    add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
+
+    # Update the apt repository
+    echo "##### Updating apt repository #####"
+    apt-get update
+
+    # Install VS Code
+    echo "##### Installing VS Code #####"
+    apt-get -y install code
+else
+    # Import the vs code package to rpm remo
+    echo "##### Importing vs code rpm package to yum repo #####"
+    rpm --import https://packages.microsoft.com/keys/microsoft.asc
+
+    # Update yum repo
+    echo "##### Updating yum repo #####"
+    echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo
+    
+    # Check update
+    echo "##### Running check update #####"
+    yum check-update
+
+    # Install code
+    echo "##### Installing vs code #####"
+    yum -y install code
+fi
+
 # Docker installation
 if [ "${OS}" = "ubuntu" ]; then
     # Remove any previous Docker installs
@@ -326,40 +361,7 @@ fi
 echo "enabling docker startup on boot"
 systemctl enable docker
 
-# Install Visual Studio code
-if [ "${OS}" = "ubuntu" ]; then
-    # Download pgp key
-    echo "##### Downloading VS Code pgp key #####"
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | apt-key add -
 
-    # Add VS Code to apt repository
-    echo "##### Updating apt repository for VS Code install #####"
-    add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
-
-    # Update the apt repository
-    echo "##### Updating apt repository #####"
-    apt-get update
-
-    # Install VS Code
-    echo "##### Installing VS Code #####"
-    apt-get -y install code
-else
-    # Import the vs code package to rpm remo
-    echo "##### Importing vs code rpm package to yum repo #####"
-    rpm --import https://packages.microsoft.com/keys/microsoft.asc
-
-    # Update yum repo
-    echo "##### Updating yum repo #####"
-    echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo
-    
-    # Check update
-    echo "##### Running check update #####"
-    yum check-update
-
-    # Install code
-    echo "##### Installing vs code #####"
-    yum -y install code
-fi
 
 #reboot the system
 echo "##### Setup Complete, rebooting system #####"
