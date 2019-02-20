@@ -2,10 +2,26 @@
 #
 # Script to bootstrap a Linux Desktop in AWS
 # from AWS provided Ubuntu 18.04 AMI or RHEL 7.6 AMI
+# 
 # Include this script as user data when launching
-# an EC2 instance to turin instnace into desktop
+# an EC2 instance to turn instnace into desktop
 # workstation.  Since cloud-init runs user data
 # as root, no need for sudo.
+# 
+# Once script runs, DO NOT log into the instance.
+# Create an AMI from the instance then boot a new instance
+# from the AMI.  
+#
+# When booting an instance from the AMI, an initial password
+# needs to be set for either the ubuntu or ec2-user user depending
+# on which distro you used.
+# 
+# Generate a password hash on any linux or MacOS system:
+# openssl passwd -1 -salt $RANDOM PASSWORD
+# replace PASSWORD with the desired password.  This will create a hash
+# 
+# When creating the new instance, include the below as user data
+# usermod -p 'OPENSSL OUTPUT' ubuntu|ec2-user (pick one)
 #
 
 # Determine OS Type
@@ -338,10 +354,6 @@ elif [ "${OS}" = "rhel" ]; then
 else
     echo "##### Unsupported OS #####"
 fi
-
-# Set initial password for ${USER} user
-echo "##### Setting initial password for ${USER} user #####"
-usermod -p '$1$30437$nU28D8AX9wSj8rHE29V5n0' ${USER}
 
 #reboot the system
 echo "##### Setup Complete, rebooting system #####"
