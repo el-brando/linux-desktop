@@ -5,7 +5,7 @@
 # 
 # Include this script as user data when launching
 # an EC2 instance to turn instnace into desktop
-# workstation.  Since cloud-init runs user data
+# workstation accessible via RDP.  Since cloud-init runs user data
 # as root, no need for sudo.
 # 
 # Once script runs, DO NOT log into the instance.
@@ -23,6 +23,8 @@
 # When creating the new instance, include the below as user data
 # usermod -p 'OPENSSL OUTPUT' ubuntu|ec2-user (pick one)
 #
+# Once the instance boots, use RDP client to connect
+#
 
 # Determine OS Type
 OSTYPE=$(head -1 /etc/os-release | awk -F"=" '{print $2}' | tr -d '"')
@@ -38,7 +40,16 @@ elif [ "${OSTYPE}" = "Red Hat Enterprise Linux Server" ]; then
     echo "OS Type is ${OS}"
 else
     echo "OS Type not Recognized"
+    exit 1
 fi
+
+#
+# For all conditional statements that follow we will test for ubuntu OS
+# Otherwise we assume the OS is rhel.  
+# No other OS should make it past the begenning of the script if not 
+# one of these 2 OS's
+# Where we need specific packages for rhel only, we will only test for rhel
+#
 
 # Update the apt repository
 if [ "${OS}" = "ubuntu" ]; then
@@ -51,13 +62,21 @@ if [ "${OS}" = "ubuntu" ]; then
     # Install Ubuntu Desktop Packages
     echo "##### Installing ubuntu-desktop packages #####"
     apt-get -y install ubuntu-desktop  
-elif [ "${OS}" = "rhel" ]; then
+else
     # Install RHEL Desktop Packages
     echo "##### Installing RHEL desktop packages #####"
     yum -y groupinstall "Server with GUI" 
+fi
+
+# Install development packages
+if [ "${OS}" = "ubuntu" ]; then
+    # Install Ubuntu Development Packages
+    echo "##### Installing build-essential packages #####"
+    apt-get -y install build-essential  
 else
-    echo "Unsupported OS"
-    exit 1
+    # Install RHEL Desktop Packages
+    echo "##### Installing RHEL development packages #####"
+    yum -y groupinstall "Development Tools" 
 fi
 
 # Install XRDP Packages
@@ -65,17 +84,14 @@ if [ "${OS}" = "ubuntu" ]; then
     # Install XRDP Packages for Ubuntu
     echo "##### Installing xrdp package for Ubuntu #####"
     apt-get -y install xrdp
-elif [ "${OS}" = "rhel" ]; then
+else
     # Install XRDP Packages for RHEL
     echo "##### Installing xrdp package for RHEL #####"
     rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
     yum -y install xrdp
-    # have to set color depth to 24 on rhel for IDEA to work
-    echo "##### setting max color depth to 24 in xrdp #####"
+    # Have to set color depth to 24 on rhel for IDEA to work
+    echo "##### Setting max color depth to 24 in xrdp #####"
     sed -i 's/max_bpp=32/max_bpp=24/' /etc/xrdp/xrdp.ini
-else
-    echo "Unsupported OS"
-    exit 1
 fi
 
 # Run ubuntu specific tasks
@@ -100,8 +116,7 @@ if [ "${OS}" = "ubuntu" ]; then
         echo "##### Updating Xwrapper.config #####"
         sed -i 's/allowed_users=console/allowed_users=anybody/' /etc/X11/Xwrapper.config
     else
-        echo "##### Xwrapper.config does not exist, exiting #####"
-        exit 1
+        echo "##### Xwrapper.config does not exist #####"
     fi
 
     # Update color manager config.  Do not check for existence of file first
@@ -129,20 +144,17 @@ if [ "${OS}" = "ubuntu" ]; then
     # Allow 3389 through firewall
     echo "##### Modifying firewall to allow port 3389 #####"
     ufw allow 3389/tcp
-elif [ "${OS}" = "rhel" ]; then
+else
     # Allow 3389 through firewall
-    echo "##### starting firewalld #####"
+    echo "##### Starting firewalld on RHEL #####"
     systemctl start firewalld
     echo "##### Modifying firewall to allow port 3389 #####"
     firewall-cmd --permanent --add-port=3389/tcp 
-    echo "##### reloading firewall policy #####"
+    echo "##### Reloading firewall policy #####"
     firewall-cmd --reload
-    echo "##### setting selinux labels on xrdp binaries #####"
+    echo "##### Setting selinux labels on xrdp binaries #####"
     chcon --type=bin_t /usr/sbin/xrdp
     chcon --type=bin_t /usr/sbin/xrdp-sesman
-else
-    echo "Unsupported OS"
-    exit 1
 fi
 
 # Start XRDP on boot
@@ -154,13 +166,10 @@ if [ "${OS}" = "ubuntu" ]; then
     # Install openjdk 8
     echo "##### Installing OpenJDK 8 #####"
     apt-get -y install openjdk-8-jdk
-elif [ "${OS}" = "rhel" ]; then
+else
     # Install openjdk 8
     echo "##### Installing OpenJDK 8 #####"
     yum -y install java-1.8.0-openjdk-devel
-else
-    echo "Unsupported OS"
-    exit 1
 fi
 
 # Install python on ubunty only
@@ -177,7 +186,7 @@ fi
 
 # Install Google Chrome
 if [ "${OS}" = "ubuntu" ]; then 
-    # then installing with apt-get
+    # Installing with apt-get
     echo "##### Setting up Google Chrome Installation pre-reqs #####"
     echo "##### Retreiving repository key and adding to apt #####"
     wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
@@ -186,14 +195,14 @@ if [ "${OS}" = "ubuntu" ]; then
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
 
     # Update the apt repository
-    echo "##### updating apt repository #####"
+    echo "##### Updating apt repository #####"
     apt-get update
 
     # Install Google Chrome
     echo "##### Installing Google Chrome #####"
     apt-get -y install google-chrome-stable
-elif [ "${OS}" = "rhel" ]; then
-    echo "##### Downloading source packages #####"
+else
+    echo "##### Downloading source packages for RHEL Install #####"
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm -P /tmp
     wget http://rpmfind.net/linux/fedora/linux/development/rawhide/Everything/x86_64/os/Packages/l/liberation-fonts-2.00.3-3.fc30.noarch.rpm -P /tmp
     wget http://rpmfind.net/linux/fedora/linux/development/rawhide/Everything/x86_64/os/Packages/l/liberation-fonts-common-2.00.3-3.fc30.noarch.rpm -P /tmp
@@ -207,8 +216,6 @@ elif [ "${OS}" = "rhel" ]; then
 
     echo "##### Installing Chrome #####"
     yum -y install /tmp/google-chrome-stable_current_x86_64.rpm
-else
-    echo "##### Unsupported OS #####"
 fi
 
 # Install IntelliJ IDEA
@@ -230,12 +237,11 @@ DEST=/tmp/$FILE
 # Set directory name
 DIR="/home/${USER}/idea"
     
-
-#Download IntelliJ IDEA Community Edition
+# Download IntelliJ IDEA Community Edition
 echo "##### Downloading idea-IC-$VERSION to $DEST... #####"
 wget -cO ${DEST} ${URL} --read-timeout=5 --tries=0
 
-# unarchive download into specified directory
+# Unarchive download into specified directory
 echo "##### Installing IntelliJ to $DIR #####"
 if mkdir ${DIR}; then
     echo "##### Destination directory creation Successfull #####"
@@ -245,17 +251,17 @@ else
     exit 1
 fi
 
-#cleanup installation
+# Cleanup installation
 echo "##### Cleaning Up IntelliJ source file ${DEST} #####"
 rm -f ${DEST}
 
-#change ownership of installation to ubuntu user
+# Change ownership of installation to ubuntu user
 echo "##### Changing ownership of ${DIR} to ${USER} #####"
 chown ${USER}:${USER} ${DIR}
 
 # Docker installation
 if [ "${OS}" = "ubuntu" ]; then
-    # remove any previous Docker installs
+    # Remove any previous Docker installs
     echo "##### Removing previous Docker installations if any #####"
     apt-get -y remove docker docker-engine docker.io containerd runc
 
@@ -263,7 +269,7 @@ if [ "${OS}" = "ubuntu" ]; then
     echo "##### updating apt repository #####"
     apt-get update
 
-    # install Docker pre-reqs
+    # Install Docker pre-reqs
     echo "##### Installing Docker pre-reqs #####"
     apt-get -y install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
 
@@ -276,47 +282,41 @@ if [ "${OS}" = "ubuntu" ]; then
     add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
     # Update the apt repository
-    echo "##### updating apt repository #####"
+    echo "##### Updating apt repository #####"
     apt-get update
 
     # Install Docker
     echo "##### Installing Docker #####"
     apt-get -y install docker-ce docker-ce-cli containerd.io
 
-    # Enable Docker to start at system boot
-    echo "##### Enabling Docker on system boot #####"
-    systemctl enable docker
-
-    # add ubuntu to Docker group
+    # Add ubuntu to Docker group
     echo "##### Adding ubuntu user to Docker group #####"
     usermod -G docker ubuntu
-elif [ "${OS}" = "rhel" ]; then
-    # add uinstall yum utils
-    echo "##### installing yum utils #####"
+else
+    # Add yum utils
+    echo "##### Installing yum utils #####"
     yum -y install yum-utils
 
-    # add rhel server extras to yum config
+    # Add rhel server extras to yum config
     echo "##### adding rhel server extras to yum repo #####"
 	yum-config-manager --enable rhui-REGION-rhel-server-extras
 
-    #install docker
+    # Install docker
     echo "##### installing docker #####"
 	yum -y install docker
 
-    #enable docker at boot
-    echo "enabling docker startup on boot"
-    systemctl enable docker
-
-    #create docker group
+    # Create docker group
     echo "##### Creating Docker group"
     groupadd docker
 
-    #add ec2-user to docker group
+    # Add ec2-user to docker group
     echo "##### Adding ec2-user user to Docker group #####"
     usermod -G docker ec2-user
-else
-    echo "##### Unsupported OS #####"
 fi
+
+# Enable docker at boot
+echo "enabling docker startup on boot"
+systemctl enable docker
 
 # Install Visual Studio code
 if [ "${OS}" = "ubuntu" ]; then
@@ -329,30 +329,28 @@ if [ "${OS}" = "ubuntu" ]; then
     add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
 
     # Update the apt repository
-    echo "##### updating apt repository #####"
+    echo "##### Updating apt repository #####"
     apt-get update
 
     # Install VS Code
     echo "##### Installing VS Code #####"
     apt-get -y install code
-elif [ "${OS}" = "rhel" ]; then
-    #import the vs code package to rpm remo
+else
+    # Import the vs code package to rpm remo
     echo "##### Importing vs code rpm package to yum repo #####"
     rpm --import https://packages.microsoft.com/keys/microsoft.asc
 
-    #update yum repo
-    echo "##### updating yum repo #####"
+    # Update yum repo
+    echo "##### Updating yum repo #####"
     echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo
     
-    #check update
-    echo "##### running check update #####"
+    # Check update
+    echo "##### Running check update #####"
     yum check-update
 
-    #install code
-    echo "##### installing vs code #####"
+    # Install code
+    echo "##### Installing vs code #####"
     yum -y install code
-else
-    echo "##### Unsupported OS #####"
 fi
 
 #reboot the system
