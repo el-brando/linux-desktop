@@ -216,6 +216,14 @@ else
 
     echo "##### Installing Chrome #####"
     yum -y install /tmp/google-chrome-stable_current_x86_64.rpm
+
+    echo "##### Cleaning up Source Files #####"
+    rm -f /tmp/google-chrome-stable_current_x86_64.rpm
+    rm -f /tmp/liberation-fonts-2.00.3-3.fc30.noarch.rpm
+    rm -f /tmp/liberation-fonts-common-2.00.3-3.fc30.noarch.rpm
+    rm -f /tmp/liberation-mono-fonts-2.00.3-3.fc30.noarch.rpm
+    rm -f /tmp/liberation-sans-fonts-2.00.3-3.fc30.noarch.rpm
+    rm -f /tmp/liberation-serif-fonts-2.00.3-3.fc30.noarch.rpm
 fi
 
 # Install IntelliJ IDEA
