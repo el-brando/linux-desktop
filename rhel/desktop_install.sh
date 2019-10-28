@@ -113,8 +113,9 @@ EOF
     gnome-shell-extension-tool -e ubuntu-dock@ubuntu.com
 
     # Configure GNOME shell extenstions for app indicators
-    echo "##### Updating GNOME shell extenstion for app indicators #####"
-    gnome-shell-extension-tool -e ubuntu-appindicators@ubuntu.com
+    # commented out as this is not working in Ubuntu 19.10
+    #echo "##### Updating GNOME shell extenstion for app indicators #####"
+    #gnome-shell-extension-tool -e ubuntu-appindicators@ubuntu.com
 fi
 
 # Update host firewalls to allow 3389
@@ -139,15 +140,15 @@ fi
 echo "##### Enableing xrdp on system boot #####"
 systemctl enable xrdp
 
-# Install JDK 8
+# Install JDK 11
 if [ "${OS}" = "ubuntu" ]; then
-    # Install openjdk 8
-    echo "##### Installing OpenJDK 8 #####"
-    apt-get -y install openjdk-8-jdk
+    # Install openjdk 11
+    echo "##### Installing OpenJDK 11 #####"
+    apt-get -y install openjdk-11-jdk
 else
-    # Install openjdk 8
+    # Install openjdk 11
     echo "##### Installing OpenJDK 8 #####"
-    yum -y install java-1.8.0-openjdk-devel
+    yum -y install java-1.11.0-openjdk-devel
 fi
 
 # Install python on ubunty only
